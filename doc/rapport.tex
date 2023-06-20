@@ -1,0 +1,205 @@
+\documentclass[10pt]{article}
+%%% Pour le français %%%
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{fancyhdr} % En-tête et pied de page personnalisés
+\usepackage{listings} % Pour du beau code coloré
+\usepackage{booktabs}
+% \usepackage{minted} % Pour du Ocaml coloré
+\usepackage{color}
+\usepackage{float}
+%%%% Pour des maths %%%%
+\usepackage{mathtools} % Pour pleins de commandes avec des maths
+\usepackage{amssymb} % Pour les symboles
+\usepackage{amsmath} % Pour les environnements splits, equations, align etc..
+\usepackage{amstext} % Pour utiliser \text
+% \usepackage{mathrsfs} % 3 fonts pour les 26 lettres
+% \usepackage{amsthm} % Custom des theoremes
+% \usepackage{tikz} % Pour des graphiques
+% \usepackage{stmaryrd} % Pour les double crochets, parenthèses etc..
+%%%%%%%%%%%%%%%%%%%%%%%%
+% \usepackage{layout} % Pour afficher le gabarit de mise en page
+% \usepackage{geometry} % Pour régler les marges
+% \usepackage{setspace} % Pour modifier l'interligne
+% \usepackage{ulem} % Pour souligner et barrer du texte
+%%% Pour des polices %%%
+% \usepackage{bookman}
+% \usepackage{charter}
+% \usepackage{newcent}
+% \usepackage{lmodern}
+% \usepackage{mathpazo}
+% \usepackage{mathptmx}
+%%%%%%%%%%%%%%%%%%%%%%%%
+% \usepackage{url} % Pour citer des urls
+% \usepackage{graphicx} % Pour travailler sur des images
+% \usepackage{color} % Pour manipuler les couleurs et colorer le texte
+%%% Renewed commands %%%
+\def\R{\mathbb{R}}
+\def\C{\mathcal{C}}
+\def\P{\mathbb{P}}
+\def\E{\mathbb{E}}
+\def\R{\mathbb{R}}
+\def\ind{\mathbb{1}}
+%%%%%%%%%%%%%%%%%%%%%%%%
+\title{Algo Avancée - Rapport de projet}
+\author{WILLEM Logan}
+\date{}
+
+\pagestyle{fancy}
+
+\lhead{Algo Avancée}
+\chead{Rapport de projet}
+\rhead{WILLEM Logan}
+\lfoot{}
+\cfoot{}
+\rfoot{\thepage}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\newpage
+
+\section{Algorithmes implémentés}
+
+Cette section présente rapidement les trois algorithmes imposés pour la résolution du jeu de blobwar.
+Elle est de plus complétée par un 2 autres algorithmes (non fonctionnels\dots).
+
+\subsection{Algorithme Glouton}
+
+Cet algorithme est implémenté dans le fichier \verb|src/strategy/greedy.rs|.
+
+Comme son nom l'indique, il s'agit d'un algorithme glouton qui consiste donc à maximiser les gains à court terme en prenant les meilleures décisions possibles à chaque étape.
+Ici, il s'agit de maximiser le gain à chaque tour en choisissant le mouvement qui apporte le plus de points à court terme, sans prendre en compte les gains futurs ou les mouvements adverses.
+L'intérêt de cet algorithme reste minime de par la qualité médiocre des résultats qu'il fournit.
+Cet algorithme est volontairement non parallèle pour éviter des surcoûts inutiles.
+
+\subsection{Algorithme Minmax}
+
+Cet algorithme est implémenté dans le fichier \verb|src/strategy/minmax.rs|.
+
+Une fonction annexe est utilisée: \verb|minmax_rec|. C'est une fonction récursive qui applique l'algorithme MinMax pour évaluer les états jusqu'à une profondeur donnée.
+Elle prend en entrée un \verb|depth| qui correspond à cette profondeur, un booléen \verb|player| qui indique si c'est au tour du joueur actuel de jouer (\verb|true|) ou pas (\verb|false|), ainsi que l'état courant du jeu \verb|state|.
+
+La méthode \verb|compute_next_move| elle parallélise les appels à \verb|minmax_rec| pour chaque mouvement possible dans l'état courant et associe à chaque mouvement le couple \verb|(valeur, mouvement)|. La méthode \verb|reduce_with| permet enfin de choisir le meilleur couple (donc celui avec la plus grande valeur).
+La méthode retourne le mouvement correspondant donc à la meilleure valeur trouvée.
+
+Le parallélisme ne se fait qu'au niveau de l'appel à \verb|minmax_rec| et non pas après dans la fonction même. En effet, la profondeur maximale envoyée à MinMax est de 4 si on veut avoir des résultats rapides.
+Cependant, j'ai remarqué empiriquement que le surcoût de parallélisation était plus élevé que l'évaluation en elle-même pour des profondeurs de 2/3. Ainsi paralléliser la fonction récursive n'aurait pas vraiment d'intérêt.
+
+\subsection{Algorithme Alphabeta}
+
+Cet algorithme est implémenté dans le fichier \verb|src/strategy/alphabeta.rs|.
+
+Il s'agit d'une extension de l'algorithme MinMax qui permet de réduire le nombre de nœuds évalués en éliminant les branches qui ne contribueront pas à la décision finale.
+
+Tout comme pour MinMax, une fonction annexe est utilisée: \verb|alpha_beta_rec|.
+Il s'agit également d'une fonction récursive qui implémente l'algorithme Alpha-Beta. Elle prend en entrée la profondeur actuelle \verb|depth|, les bornes \verb|alpha| et \verb|beta|, le booléen \verb|player| et l'état actuel \verb|state| du jeu.
+
+La méthode \verb|compute_next_move| utilise la même logique que pour MinMax en utilisant la parallélisation et la réduction des résultats obtenus après application de l'algorithme pour chaque mouvement.
+
+Le parallélisme se fait ici aussi qu'à l'appel de la fonction récursive et non pas à l'intérieur de celle-ci à cause des dépendances sur les variables \verb|alpha| et \verb|beta|.
+
+\subsection{Algorithme Glouton randomisé}
+
+Cet algorithme est implémenté dans le fichier \verb|src/strategy/greedy_rand.rs|.
+
+J'ai voulu ici faire en sorte de choisir non pas toujours le premier mouvement ayant le meilleur gain mais plutôt choisir un mouvement aléatoire parmi tout ceux maximisant le gain à court terme.
+Malheureusement, cette approche ne donne pas particulièrement de plus-value.
+Tout comme pour l'algorithme glouton, l'implémentation du parallélisme n'est pas particulièrement pertinent.
+
+\subsection{Algorithme de Monte-Carlo}
+
+\color{red}
+
+\( /!\backslash \) Cet algorithme ne fonctionne pas du tout, je n'ai pas réussi à tirer de lui ce que je désirais\dots\
+\\
+
+\color{black}
+
+Cet algorithme est implémenté dans le fichier \verb|src/strategy/montecarlo.rs|.
+
+Il s'agit d'une implémentation de l'algorithme Monte-Carlo. Il simule un grand nombre de parties aléatoires (c'est à dire jusqu'à la fin du jeu avec l'utilisation de la méthode \verb|game_over|) à partir de l'état actuel du jeu, en choisissant des mouvements aléatoires pour chaque joueur, puis en utilisant la valeur de chaque résultat pour déterminer le meilleur mouvement possible.
+
+Contrairement à MinMax ou AlphaBeta, cet algorithme prend en entrée la variable \verb|max_iterations| qui détermine le nombre de simulations qui seront effectuées pour chaque mouvement possible.
+
+À chaque itération, on calcule le score final et on l'ajoute à la somme totale des scores pour le mouvement en question. À la fin de toutes les itérations, on divise la somme totale par le nombre d'itérations pour obtenir le score moyen. C'est par ce score moyen que le mouvement suivant sera sélectionné.
+
+Ici aussi le parallélisme est utilisé.
+
+\newpage
+
+\section{Évaluation des performances}
+\label{section 2}
+
+\subsection{Méthode d'évaluation}
+
+Deux scripts ont été créés pour l'évaluation des performances:
+
+\begin{itemize}
+    \item \verb|temps_exec.sh| permettant de calculer le temps d'exécution moyen des algorithmes. Pour que l'algotithme marche, il faut veiller à n'avoir aucune erreur affichée par cargo. L'usage correct de cette commande est \verb|temps_exec.sh <number>| avec \verb|<number>| correspondant au nombre d'exécution de l'algorithme.
+    \item \verb|pourcentage_victoire.sh| permettant de calculer le taux de victoire moyen de la première stratégie sur la deuxième. L'usage correct de cette commande est \verb|pourcentage_victoire.sh <number>| avec \verb|<number>| correspondant au nombre d'exécution de l'algorithme. \\
+\end{itemize}
+
+Notons que pour les deux scripts, il faut changer en amont les algorithmes dans \verb|main.rs|.
+\\
+
+De plus, les profondeurs choisies pour les stratégies MinMax et AlphaBeta ont été fait de manière empirique: ces stratégies restaient efficaces en temps d'exécution pour une profondeur respectivement de 4. L'algorithme de Monte-Carlo quant à lui n'a pas été évalué puisqu'il ne fournit jamais de résultats satisfaisants.
+
+\subsection{Résultats}
+
+\subsubsection{Temps moyen d'exécution}
+
+Ci-dessous est repertorié le temps moyen d'exécution pour chacune des stratégies. Pour chacune d'entre-elles, la stratégie adverse considérée est la même. Ainsi, le temps moyen repertorié est le temps pris par la même stratégie jouant deux fois et non pas le temps propre que prend l'algorithme.
+L'algorithme n'est pas présenté ici, choix qui s'explique facilement dans la sous-section suivante.
+
+\begin{table}[H]
+    \begin{center}
+        \begin{tabular}{@{}|c|cc|@{}}
+            \toprule
+            \multicolumn{1}{|l|}{} & \multicolumn{2}{c|}{Temps d'exécution moyen (en s.)}                  \\ \midrule
+            Stratégie              & \multicolumn{1}{c|}{Algo non parallèle}              & Algo parallèle \\ \midrule
+            Greedy                 & \multicolumn{1}{c|}{0.103}                           & /              \\
+            GreedyRand             & \multicolumn{1}{c|}{0.107}                           & /              \\
+            MinMax(4)              & \multicolumn{1}{c|}{298}                                & 43.7           \\
+            AlphaBeta(5)           & \multicolumn{1}{c|}{80.0}                            & 44.6          \\ \midrule
+        \end{tabular}
+        \caption{Temps d'exécution moyen des différentes stratégies}
+    \end{center}
+\end{table}
+
+On voit une nette amélioration du temps d'exécution que ce soit pour la stratégie MinMax ou AlphaBeta entre l'algorithme parallèle et non parallèle.
+On voit également une amélioration de la profondeur pour ces deux stratégies pour un temps d'exécution relativement similaire en utilisant l'algorithme parallèle. 
+
+\subsubsection{Ratio de victoires}
+
+\begin{table}[H]
+    \begin{center}
+        \begin{tabular}{@{}|c|ccc|@{}}
+            \toprule
+            \multicolumn{1}{|l|}{} & \multicolumn{3}{c|}{\% victoire (contre)}                                              \\ \midrule
+            Stratégie              & \multicolumn{1}{c|}{Greedy}               & \multicolumn{1}{c|}{MinMax(2)} & MinMax(4) \\ \midrule
+            Greedy                 & \multicolumn{1}{c|}{/}                    & \multicolumn{1}{c|}{0\%}       & 0\%       \\
+            GreedyRand             & \multicolumn{1}{c|}{46\%}                 & \multicolumn{1}{c|}{0\%}       & 0\%       \\
+            MinMax(4)              & \multicolumn{1}{c|}{100\%}                & \multicolumn{1}{c|}{100\%}     & /         \\
+            AlphaBeta(5)           & \multicolumn{1}{c|}{100\%}                & \multicolumn{1}{c|}{100\%}     & 100\%     \\
+            MonteCarlo(100)        & \multicolumn{1}{c|}{0\%}                  & \multicolumn{1}{c|}{0\%}       & 0\%       \\ \bottomrule
+        \end{tabular}
+        \caption{Pourcentage de victoire des stratégies en fonction de l'adversaire}
+    \end{center}
+\end{table}
+
+Plusieurs remarques sur ce tableau:
+
+\begin{itemize}
+    \item On remarque bien comme dit précédemment que les stratégies GreedyRand et MonteCarlo ne fournissent peu voire pas du tout de résultats satisfaisants, la stratégie Greedy étant déjà meilleure.
+    \item On peut classer ces stratégies donc par ordre d'efficacité: \\ MonteCarlo < GreedyRand <= Greedy < MinMax(4) < AlphaBeta(5)
+    \item On remarque aussi que non seulement, comme vu dans la sous-section précédante, l'algorithme MinMax de profondeur 4 s'exécute aussi vite que l'AlphaBeta de profondeur 5, mais on voit maintenant en plus que celui-ci gagne à tout les cas. Donc cette stratégie est celle à considérer.
+\end{itemize}
+
+
+
+\end{document}
